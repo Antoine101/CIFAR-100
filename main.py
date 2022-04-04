@@ -12,13 +12,14 @@ from pytorch_lightning.loggers import TensorBoardLogger
 if __name__ == "__main__":
 
     warnings.filterwarnings("ignore", ".*Deprecated in NumPy 1.20.*")
+    warnings.filterwarnings("ignore", ".*Deprecated in NumPy 1.20.*")
 
     gpus = min(1, torch.cuda.device_count())
     batch_size = 256 if gpus else 64
     num_workers = int(os.cpu_count() / 2)
     print(f"Number of workers used: {num_workers}")
 
-    max_epochs = 100
+    max_epochs = 1
     learning_rate = 2e-4
 
     dm = datamodule.CIFAR100DataModule(batch_size=batch_size, num_workers=num_workers)

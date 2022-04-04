@@ -33,6 +33,8 @@ class CIFAR100DataModule(LightningDataModule):
         
         train_set_length = len(train_set)
         indices = list(range(train_set_length))
+        np.random.seed(42)
+        np.random.shuffle(indices)
         split = int(np.floor(0.9 * train_set_length))
 
         self.train_sampler = SubsetRandomSampler(indices[:split])
