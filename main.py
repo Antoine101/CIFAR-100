@@ -19,7 +19,7 @@ if __name__ == "__main__":
     num_workers = int(os.cpu_count() / 4)
     print(f"Number of workers used: {num_workers}")
 
-    max_epochs = 200
+    max_epochs = 1
     learning_rate = 0.001
 
     dm = datamodule.CIFAR100DataModule(batch_size=batch_size, num_workers=num_workers)

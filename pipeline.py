@@ -130,19 +130,19 @@ class CIFAR100ResNet(LightningModule):
             f.write(f"Total: {round(acc.item()*100, 1)}%\n")
             f.write("\n")
             f.write("Per Class:\n")
-            f.write("Class ID - Accuracy (%)\n")
+            f.write("Class - Accuracy (%)\n")
             for class_id in range(self.n_classes):
                 precision = cm[class_id, class_id] / torch.sum(cm[:,class_id])            
                 precision = round(precision.item()*100, 1)
-                f.write(f"{class_id} - {precision}\n")
+                f.write(f"{self.trainer.datamodule.classes[class_id]} - {precision}\n")
             f.write("\n")
             f.write("\n")
             f.write("==================================================\n")
             f.write("PREDICTIONS DETAIL\n")
             f.write("==================================================\n")
-            f.write("Image index - Target class ID - Predicted class ID\n")
+            f.write("Image index - Target class - Predicted class\n")
             for i in range(len(targets)):
-                f.write(f"{i} - {targets[i]} - {preds[i]}\n")
+                f.write(f"{i} - {self.trainer.datamodule.classes[targets[i]]} - {self.trainer.datamodule.classes[preds[i]]}\n")
         
     def on_save_checkpoint(self, checkpoint):
         # Get the state_dict from self.model to get rid of the "model." prefix

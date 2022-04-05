@@ -41,6 +41,7 @@ class CIFAR100DataModule(LightningDataModule):
         self.validation_indices = indices[split:]
 
         self.cifar100_train = datasets.CIFAR100(root="./data", train=True, transform=train_set_transforms)
+        self.classes = self.cifar100_train.classes
         self.cifar100_validation = datasets.CIFAR100(root="./data", train=True, transform=validation_set_transforms)
         self.cifar100_test = datasets.CIFAR100(root="./data", train=False, transform=test_set_transforms)
 
