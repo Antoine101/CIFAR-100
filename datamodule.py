@@ -20,15 +20,15 @@ class CIFAR100DataModule(LightningDataModule):
         train_set = datasets.CIFAR100(root="./data", train=True, transform=transforms.ToTensor())
         train_set_mean, train_set_std = compute_normstats(train_set)
         train_set_transforms = transforms.Compose([transforms.RandomCrop(32, padding=4),
-                                            transforms.RandomHorizontalFlip(),
+                                            transforms.RandomHorizontalFlip(p=0.5),
                                             transforms.ToTensor(),
-                                            transforms.Normalize(train_set_mean, train_set_std)])
+                                            transforms.Normalize(train_set_mean, train_set_std, inplace=True)])
 
         validation_set_transforms = transforms.Compose([transforms.ToTensor(),
-                                            transforms.Normalize(train_set_mean, train_set_std)])                                            
+                                            transforms.Normalize(train_set_mean, train_set_std, inplace=True)])                                            
 
         test_set_transforms = transforms.Compose([transforms.ToTensor(),
-                                            transforms.Normalize(train_set_mean, train_set_std)])
+                                            transforms.Normalize(train_set_mean, train_set_std, inplace=True)])
 
         
         train_set_length = len(train_set)

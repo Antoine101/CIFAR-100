@@ -1,9 +1,7 @@
 import os
 import warnings
-
 import datamodule
 import pipeline
-
 import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
@@ -11,16 +9,18 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 if __name__ == "__main__":
 
-    warnings.filterwarnings("ignore", ".*Deprecated in NumPy 1.20.*")
-    warnings.filterwarnings("ignore", ".*Deprecated in NumPy 1.20.*")
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    warnings.filterwarnings("ignore", ".*Your `val_dataloader` has `shuffle=True`.*")
+    warnings.filterwarnings("ignore", ".*Checkpoint directory.*")
+
 
     gpus = min(1, torch.cuda.device_count())
-    batch_size = 256 if gpus else 64
-    num_workers = int(os.cpu_count() / 2)
+    batch_size = 128 if gpus else 64
+    num_workers = int(os.cpu_count() / 4)
     print(f"Number of workers used: {num_workers}")
 
-    max_epochs = 1
-    learning_rate = 2e-4
+    max_epochs = 200
+    learning_rate = 0.001
 
     dm = datamodule.CIFAR100DataModule(batch_size=batch_size, num_workers=num_workers)
 
@@ -53,6 +53,6 @@ if __name__ == "__main__":
                     callbacks=[lr_monitor, early_stopping, checkpoint]
                     ) 
 
-    pipeline = pipeline.CIFAR100ResNet(lr=learning_rate)  
+    pipeline = pipeline.CIFAR100ResNet(learning_rate=learning_rate, batch_size=batch_size)  
     trainer.fit(pipeline, dm)
     trainer.test(pipeline, dm)

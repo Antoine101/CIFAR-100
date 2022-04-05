@@ -1,47 +1,54 @@
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import model
 import torch
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import OneCycleLR
+from torch.optim.lr_scheduler import OneCycleLR, ReduceLROnPlateau
 from torchmetrics import ConfusionMatrix
 from torchmetrics.functional import accuracy
 from pytorch_lightning import LightningModule
 from model import create_model
+from torchvision.utils import make_grid
  
 class CIFAR100ResNet(LightningModule):
-    def __init__(self, lr):
+    def __init__(self, learning_rate, batch_size):
         super().__init__()
         
         # Save hyperparameters to the checkpoint
         self.save_hyperparameters() 
 
-        self.n_classes = 100
-        self.confmat = ConfusionMatrix(num_classes=100)  
+        self.confmat = ConfusionMatrix(num_classes=100)
         
         # Creation of the model
         self.model = create_model()
+
+        # Instantiation of the number of classes
+        self.n_classes = 100 
    
-        # Instatiation of the learning rate
-        self.lr = lr
+        # Instantiation of the learning rate
+        self.learning_rate = learning_rate
+
+        # Instantiation of the batch_size
+        self.batch_size = batch_size
         
     def configure_optimizers(self):  
         optimizer = torch.optim.SGD(
             self.parameters(),
-            lr=self.hparams.lr,
+            lr=self.hparams.learning_rate,
             momentum=0.9,
             weight_decay=5e-4,
         )
-        steps_per_epoch = 5000
+        steps_per_epoch = int(np.ceil(45000 / self.batch_size))
         scheduler_dict = {
             "scheduler": OneCycleLR(
                 optimizer,
-                0.1,
+                max_lr=0.1,
                 epochs=self.trainer.max_epochs,
-                steps_per_epoch=steps_per_epoch,
+                steps_per_epoch=steps_per_epoch
             ),
-            "interval": "step",
+            "interval": "step"
         }
         return {"optimizer": optimizer, "lr_scheduler": scheduler_dict}
     
@@ -63,10 +70,18 @@ class CIFAR100ResNet(LightningModule):
             self.logger.experiment.add_histogram(name, params,self.current_epoch)
         # Only after the first training epoch, log one of the training inputs as a figure and log the model graph
         if self.current_epoch == 0:
+            image_samples = outputs[0]["inputs"][:10]
+            image_samples = image_samples.cpu()
+            image_samples_grid = make_grid(image_samples, normalize=True)
+            image_samples_grid = image_samples_grid.numpy()
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            ax.imshow(np.transpose(image_samples_grid, (1, 2, 0)))
+            self.logger.experiment.add_figure(f"Training sample normalized images", fig)
             input_sample = outputs[0]["inputs"][0]
             input_sample = torch.unsqueeze(input_sample, 3)
-            input_sample = torch.permute(input_sample, (0,3,1,2))
-            self.logger.log_graph(self, input_sample)
+            input_sample = torch.permute(input_sample, (3,0,1,2))
+            self.logger.experiment.add_graph(self, input_sample)
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -90,11 +105,6 @@ class CIFAR100ResNet(LightningModule):
                 precision = cm[class_id, class_id] / torch.sum(cm[:,class_id])
                 precision = round(precision.item()*100,1)
                 self.log(f"validation_precision/{self.n_classes}", precision)
-        df_cm = pd.DataFrame(cm.numpy(), index = range(self.n_classes), columns=range(self.n_classes))
-        plt.figure()
-        fig = sns.heatmap(df_cm, annot=True, cmap='Spectral').get_figure()
-        plt.yticks(rotation=0)
-        self.logger.experiment.add_figure("Confusion matrix", fig, self.current_epoch)
 
     def test_step(self, batch, batch_idx):
         x, y = batch
@@ -117,13 +127,12 @@ class CIFAR100ResNet(LightningModule):
             f.write("ACCURACY\n")
             f.write("==================================================\n")
             f.write("\n")            
-            f.write(f"Total accuracy: {round(acc.item()*100, 1)}%\n")
+            f.write(f"Total: {round(acc.item()*100, 1)}%\n")
             f.write("\n")
-            f.write("Class ID - Acurracy (%)\n")
+            f.write("Per Class:\n")
+            f.write("Class ID - Accuracy (%)\n")
             for class_id in range(self.n_classes):
-                precision = cm[class_id, class_id] / torch.sum(cm[:,class_id])
-                f.write(f"Number of good predictions: {cm[class_id, class_id]}\n")
-                f.write(f"Number of images of this class to predict: {torch.sum(cm[class_id, :])}\n")                
+                precision = cm[class_id, class_id] / torch.sum(cm[:,class_id])            
                 precision = round(precision.item()*100, 1)
                 f.write(f"{class_id} - {precision}\n")
             f.write("\n")
