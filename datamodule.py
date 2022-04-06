@@ -21,6 +21,7 @@ class CIFAR100DataModule(LightningDataModule):
         train_set_mean, train_set_std = compute_normstats(train_set)
         train_set_transforms = transforms.Compose([transforms.RandomCrop(32, padding=4),
                                             transforms.RandomHorizontalFlip(p=0.5),
+                                            transforms.RandomRotation(degrees=15),
                                             transforms.ToTensor(),
                                             transforms.Normalize(train_set_mean, train_set_std, inplace=True)])
 
