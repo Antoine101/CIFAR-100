@@ -20,7 +20,7 @@ if __name__ == "__main__":
     print(f"Number of workers used: {num_workers}")
 
     max_epochs = 200
-    learning_rate = 0.001
+    learning_rate = 0.1
 
     dm = datamodule.CIFAR100DataModule(batch_size=batch_size, num_workers=num_workers)
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
                     max_epochs=max_epochs, 
                     logger=tensorboard_logger,
                     log_every_n_steps = 1,
-                    callbacks=[lr_monitor, early_stopping, checkpoint]
+                    callbacks=[lr_monitor, checkpoint]
                     ) 
 
     pipeline = pipeline.CIFAR100ResNet(learning_rate=learning_rate, batch_size=batch_size)  
