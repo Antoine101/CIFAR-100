@@ -5,7 +5,7 @@ import seaborn as sns
 import model
 import torch
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import OneCycleLR, ReduceLROnPlateau
+from torch.optim.lr_scheduler import OneCycleLR, ReduceLROnPlateau, MultiStepLR
 from torchmetrics import ConfusionMatrix
 from torchmetrics.functional import accuracy
 from pytorch_lightning import LightningModule
@@ -40,16 +40,24 @@ class CIFAR100ResNet(LightningModule):
             momentum=0.9,
             weight_decay=5e-4,
         )
-        steps_per_epoch = int(np.ceil(45000 / self.batch_size))
         scheduler_dict = {
-            "scheduler": OneCycleLR(
+            "scheduler": MultiStepLR(
                 optimizer,
-                max_lr=0.1,
-                epochs=self.trainer.max_epochs,
-                steps_per_epoch=steps_per_epoch
+                milestones=[60,120,160],
+                gamma=0.2
             ),
-            "interval": "step"
-        }
+            "interval": "epoch"
+        }        
+        #steps_per_epoch = int(np.ceil(45000 / self.batch_size))
+        #scheduler_dict = {
+            #"scheduler": OneCycleLR(
+            #    optimizer,
+            #    max_lr=0.1,
+            #    epochs=self.trainer.max_epochs,
+            #    steps_per_epoch=steps_per_epoch
+            #),
+            #"interval": "step"
+        #}
         return {"optimizer": optimizer, "lr_scheduler": scheduler_dict}
     
     def forward(self, x):
