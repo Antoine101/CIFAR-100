@@ -33,7 +33,7 @@ class CIFAR100ResNet(LightningModule):
         # Instantiation of the batch_size
         self.batch_size = batch_size
         
-    def configure_optimizers(self):  
+    def configure_optimizers(self): 
         optimizer = torch.optim.SGD(
             self.parameters(),
             lr=self.hparams.learning_rate,

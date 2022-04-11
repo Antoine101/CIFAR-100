@@ -1,4 +1,5 @@
 import os
+from argparse import ArgumentParser
 import warnings
 import datamodule
 import pipeline
@@ -13,14 +14,24 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore", ".*Your `val_dataloader` has `shuffle=True`.*")
     warnings.filterwarnings("ignore", ".*Checkpoint directory.*")
 
+    parser = ArgumentParser()
+    parser.add_argument("--accelerator", default=None)
+    parser.add_argument("--device", default=None)
+    args = parser.parse_args()
 
-    gpus = min(1, torch.cuda.device_count())
-    batch_size = 128 if gpus else 64
-    num_workers = int(os.cpu_count() / 4)
+    print(f"Device used: {torch.cuda.get_device_name(device=int(args.device))}")
+
+    num_workers = int(os.cpu_count() / 3)
     print(f"Number of workers used: {num_workers}")
 
     max_epochs = 200
+    print(f"Maximum number of epochs: {max_epochs}")
+
+    batch_size = 256 if args.accelerator else 64
+    print(f"Batch size: {batch_size}")
+
     learning_rate = 0.1
+    print(f"Initial learning rate: {learning_rate}")    
 
     dm = datamodule.CIFAR100DataModule(batch_size=batch_size, num_workers=num_workers)
 
@@ -46,7 +57,8 @@ if __name__ == "__main__":
                             )
 
     trainer = Trainer(
-                    gpus=gpus,
+                    accelerator=args.accelerator,
+                    devices=[int(args.device)],
                     max_epochs=max_epochs, 
                     logger=tensorboard_logger,
                     log_every_n_steps = 1,
