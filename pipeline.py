@@ -106,10 +106,13 @@ class CIFAR100ResNet(LightningModule):
         targets = torch.cat([output["targets"] for output in outputs])
         # Concatenate the predictions of all batches
         preds = torch.cat([output["predictions"] for output in outputs])
-        # Compute the confusion matrix, turn it into a DataFrame, generate the plot and log it
+        # Compute the confusion matrix
         cm = self.confmat(preds, targets)
+        # Send it to the CPU
         cm = cm.cpu()
+        # For each class
         for class_id in range(self.n_classes):
+                # Calculate and log its prediction precision on the full validation set
                 precision = cm[class_id, class_id] / torch.sum(cm[:,class_id])
                 precision = round(precision.item()*100,1)
                 self.log(f"validation_precision/{self.n_classes}", precision)
@@ -127,9 +130,13 @@ class CIFAR100ResNet(LightningModule):
     def test_epoch_end(self, outputs):
         targets = torch.cat([output["targets"] for output in outputs])
         preds = torch.cat([output["predictions"] for output in outputs])
+        # Compute the total prediction accuracy on the full test set
         acc = accuracy(preds, targets)
+        # Compute the confusion matrix
         cm = self.confmat(preds, targets)
+        # Send it to the CPU
         cm = cm.cpu()
+        # Write the test set prediction performances to an output file
         with open("test_set_predictions.txt", "w") as f:
             f.write("==================================================\n")
             f.write("ACCURACY\n")
@@ -149,6 +156,7 @@ class CIFAR100ResNet(LightningModule):
             f.write("PREDICTIONS DETAIL\n")
             f.write("==================================================\n")
             f.write("Image index - Target class - Predicted class\n")
+            # Write the target class and the predicted class for each test image
             for i in range(len(targets)):
                 f.write(f"{i} - {self.trainer.datamodule.classes[targets[i]]} - {self.trainer.datamodule.classes[preds[i]]}\n")
         
