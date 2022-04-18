@@ -12,9 +12,11 @@ class CIFAR100DataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
     
+
     def prepare_data(self):
         datasets.CIFAR100(root="./data", download=True, train=True)
         datasets.CIFAR100(root="./data", download=True, train=False)
+
 
     def setup(self, stage=None):
         train_set = datasets.CIFAR100(root="./data", train=True, transform=transforms.ToTensor())
@@ -31,28 +33,39 @@ class CIFAR100DataModule(LightningDataModule):
         test_set_transforms = transforms.Compose([transforms.ToTensor(),
                                             transforms.Normalize(train_set_mean, train_set_std, inplace=True)])
 
-        
+        # Get the train set images indices and shuffle them
         train_set_length = len(train_set)
         indices = list(range(train_set_length))
         np.random.seed(42)
         np.random.shuffle(indices)
+
+        # Calculate the split point to have 10% of the train set as a validation set
         split = int(np.floor(0.9 * train_set_length))
 
+        # Create a sampler for the train set (used in train_dataloader)
         self.train_sampler = SubsetRandomSampler(indices[:split])
+
+        # Get the indices for the validation set (used in val_dataloader)
         self.validation_indices = indices[split:]
 
+        # Create the train, validation and test sets
         self.cifar100_train = datasets.CIFAR100(root="./data", train=True, transform=train_set_transforms)
-        self.classes = self.cifar100_train.classes
         self.cifar100_validation = datasets.CIFAR100(root="./data", train=True, transform=validation_set_transforms)
         self.cifar100_test = datasets.CIFAR100(root="./data", train=False, transform=test_set_transforms)
+
+        # Retrieve classes from the train set
+        self.classes = self.cifar100_train.classes
+
 
     def train_dataloader(self):
         cifar100_train = DataLoader(self.cifar100_train, batch_size=self.batch_size, sampler=self.train_sampler, num_workers=self.num_workers)
         return cifar100_train
 
+
     def val_dataloader(self):
         cifar100_validation = DataLoader(self.cifar100_validation, batch_size=self.batch_size, sampler=self.validation_indices, num_workers=self.num_workers)
         return cifar100_validation
+
 
     def test_dataloader(self):
         cifar100_test = DataLoader(self.cifar100_test, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
