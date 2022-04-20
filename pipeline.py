@@ -1,3 +1,4 @@
+import csv
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -136,7 +137,19 @@ class CIFAR100ResNet(LightningModule):
         cm = self.confmat(preds, targets)
         # Send it to the CPU
         cm = cm.cpu()
-        # Write the test set prediction performances to an output file
+        classes_precisions = []
+        for class_id in range(self.n_classes):
+            precision = cm[class_id, class_id] / torch.sum(cm[:,class_id])            
+            precision = round(precision.item()*100, 1)
+            classes_precisions.append(precision)
+
+        # Write the test set prediction performances to an csv file
+        with open("test_set_predictions.csv", "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(self.trainer.datamodule.classes)
+            writer.writerow(classes_precisions)
+
+        # Write the test set prediction performances to a text file
         with open("test_set_predictions.txt", "w") as f:
             f.write("==================================================\n")
             f.write("ACCURACY\n")

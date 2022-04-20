@@ -29,7 +29,7 @@ if __name__ == "__main__":
     print(f"Number of workers used: {num_workers}")
 
     # Set maximum number of epochs to train for
-    max_epochs = 200
+    max_epochs = 2
     print(f"Maximum number of epochs: {max_epochs}")
 
     # Set the batch size
