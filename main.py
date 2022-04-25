@@ -17,23 +17,29 @@ if __name__ == "__main__":
 
     # Parse command line arguments
     parser = ArgumentParser()
-    parser.add_argument("--accelerator", default=None) # Supported inputs: "gpu"
-    parser.add_argument("--device", default=None) # Supported inputs: graphics card index (0, 1, ...)
+    parser.add_argument("--accelerator", default=None) # Supported inputs: "gpu", "cpu"
+    parser.add_argument("--devices", default=None) # Supported inputs: graphics card index (0, 1, ...)
     args = parser.parse_args()
 
+    # Print accelerator
+    print(f"Accelerator: {args.accelerator}")
+
     # Print name of graphics card with index specified in arguments
-    print(f"Device used: {torch.cuda.get_device_name(device=int(args.device))}")
+    if args.accelerator=="gpu":
+        print(f"Graphics card(s) used: {torch.cuda.get_device_name(device=int(args.device))}")
+    elif args.accelerator=="cpu":
+        print(f"Cores used: {args.devices}")
 
     # Set number of workers (for dataloaders)
-    num_workers = int(os.cpu_count() / 3)
+    num_workers = int(os.cpu_count() / 4)
     print(f"Number of workers used: {num_workers}")
 
     # Set maximum number of epochs to train for
-    max_epochs = 2
+    max_epochs = 1
     print(f"Maximum number of epochs: {max_epochs}")
 
     # Set the batch size
-    batch_size = 256 if args.accelerator else 64
+    batch_size = 256 if args.accelerator=="gpu" else 64
     print(f"Batch size: {batch_size}")
 
     # Set the initial learning rate
@@ -67,7 +73,7 @@ if __name__ == "__main__":
     # Instantiate the trainer
     trainer = Trainer(
                     accelerator=args.accelerator,
-                    devices=[int(args.device)],
+                    devices=int(args.devices),
                     max_epochs=max_epochs, 
                     logger=tensorboard_logger,
                     log_every_n_steps = 1,

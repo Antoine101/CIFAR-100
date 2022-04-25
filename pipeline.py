@@ -20,6 +20,7 @@ class CIFAR100ResNet(LightningModule):
         # Save hyperparameters to the checkpoint
         self.save_hyperparameters() 
 
+        # Instantiation of metrics
         self.confmat = ConfusionMatrix(num_classes=100)
         
         # Creation of the model
@@ -65,13 +66,13 @@ class CIFAR100ResNet(LightningModule):
         out = self.model(x)
         return F.log_softmax(out, dim=1)
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch):
         x, y = batch
         logits = self(x)
         loss = F.nll_loss(logits, y)
-        preds = torch.argmax(logits, dim=1)
+        predictions = torch.argmax(logits, dim=1)
         self.log("train_loss", loss, on_step=True, on_epoch=True)
-        return {"inputs":x, "targets":y, "predictions":preds, "loss":loss}    
+        return {"inputs":x, "targets":y, "predictions":predictions, "loss":loss}    
 
     def training_epoch_end(self, outputs):
         # Log weights and biases for all layers of the model
@@ -92,15 +93,15 @@ class CIFAR100ResNet(LightningModule):
             input_sample = torch.permute(input_sample, (3,0,1,2))
             self.logger.experiment.add_graph(self, input_sample)
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch):
         x, y = batch
         logits = self(x)
         loss = F.nll_loss(logits, y)
-        preds = torch.argmax(logits, dim=1)
-        acc = accuracy(preds, y)
+        predictions = torch.argmax(logits, dim=1)
+        acc = accuracy(predictions, y)
         self.log(f"validation_loss", loss, prog_bar=True)
         self.log(f"validation_acc", acc, prog_bar=True)
-        return {"inputs":x, "targets":y, "predictions":preds, "loss":loss} 
+        return {"inputs":x, "targets":y, "predictions":predictions, "loss":loss} 
 
     def validation_epoch_end(self, outputs):
         # Concatenate the targets of all batches
@@ -118,23 +119,25 @@ class CIFAR100ResNet(LightningModule):
                 precision = round(precision.item()*100,1)
                 self.log(f"validation_precision/{self.n_classes}", precision)
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch):
         x, y = batch
         logits = self(x)
         loss = F.nll_loss(logits, y)
-        preds = torch.argmax(logits, dim=1)
-        acc = accuracy(preds, y)
+        probabilities = F.softmax(logits, dim=1)
+        predictions = torch.argmax(logits, dim=1)
+        acc = accuracy(predictions, y)
         self.log(f"test_loss", loss, prog_bar=True)
         self.log(f"test_acc", acc, prog_bar=True)
-        return {"targets":y, "predictions":preds}
+        return {"targets":y, "predictions":predictions, "probabilities":probabilities}
 
     def test_epoch_end(self, outputs):
         targets = torch.cat([output["targets"] for output in outputs])
-        preds = torch.cat([output["predictions"] for output in outputs])
+        predictions = torch.cat([output["predictions"] for output in outputs])
+        probabilities = torch.cat([output["probabilities"] for output in outputs])
         # Compute the total prediction accuracy on the full test set
-        acc = accuracy(preds, targets)
+        acc = accuracy(predictions, targets)
         # Compute the confusion matrix
-        cm = self.confmat(preds, targets)
+        cm = self.confmat(predictions, targets)
         # Send it to the CPU
         cm = cm.cpu()
         classes_precisions = []
@@ -147,7 +150,8 @@ class CIFAR100ResNet(LightningModule):
         with open("test_set_predictions.csv", "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(self.trainer.datamodule.classes)
-            writer.writerow(classes_precisions)
+            for _, image_probs in enumerate(probabilities.numpy()):
+                writer.writerow(image_probs)
 
         # Write the test set prediction performances to a text file
         with open("test_set_predictions.txt", "w") as f:
@@ -171,7 +175,7 @@ class CIFAR100ResNet(LightningModule):
             f.write("Image index - Target class - Predicted class\n")
             # Write the target class and the predicted class for each test image
             for i in range(len(targets)):
-                f.write(f"{i} - {self.trainer.datamodule.classes[targets[i]]} - {self.trainer.datamodule.classes[preds[i]]}\n")
+                f.write(f"{i} - {self.trainer.datamodule.classes[targets[i]]} - {self.trainer.datamodule.classes[predictions[i]]}\n")
         
     def on_save_checkpoint(self, checkpoint):
         # Get the state_dict from self.model to get rid of the "model." prefix
