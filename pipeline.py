@@ -42,14 +42,28 @@ class CIFAR100ResNet(LightningModule):
             momentum=0.9,
             weight_decay=5e-4,
         )
+
+        #scheduler_dict = {
+        #    "scheduler": MultiStepLR(
+        #        optimizer,
+        #        milestones=[60,120,160],
+        #        gamma=0.2
+        #        ),
+        #    "interval": "epoch"
+        #}      
+
         scheduler_dict = {
-            "scheduler": MultiStepLR(
+            "scheduler": ReduceLROnPlateau(
                 optimizer,
-                milestones=[60,120,160],
-                gamma=0.2
-            ),
-            "interval": "epoch"
-        }        
+                mode="min",
+                factor=0.2,
+                patience=20
+                ),
+            "interval": "epoch",
+            "frequency": 1,
+            "monitor": "validation_loss"
+        }  
+
         #steps_per_epoch = int(np.ceil(45000 / self.batch_size))
         #scheduler_dict = {
             #"scheduler": OneCycleLR(
@@ -60,18 +74,19 @@ class CIFAR100ResNet(LightningModule):
             #),
             #"interval": "step"
         #}
+
         return {"optimizer": optimizer, "lr_scheduler": scheduler_dict}
     
     def forward(self, x):
         out = self.model(x)
         return F.log_softmax(out, dim=1)
 
-    def training_step(self, batch):
+    def training_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
         loss = F.nll_loss(logits, y)
         predictions = torch.argmax(logits, dim=1)
-        self.log("train_loss", loss, on_step=True, on_epoch=True)
+        self.log("train_loss", loss, on_epoch=True, prog_bar=True)
         return {"inputs":x, "targets":y, "predictions":predictions, "loss":loss}    
 
     def training_epoch_end(self, outputs):
@@ -93,14 +108,14 @@ class CIFAR100ResNet(LightningModule):
             input_sample = torch.permute(input_sample, (3,0,1,2))
             self.logger.experiment.add_graph(self, input_sample)
 
-    def validation_step(self, batch):
+    def validation_step(self, batch, batch_idx):
         x, y = batch
         logits = self(x)
         loss = F.nll_loss(logits, y)
         predictions = torch.argmax(logits, dim=1)
         acc = accuracy(predictions, y)
-        self.log(f"validation_loss", loss, prog_bar=True)
-        self.log(f"validation_acc", acc, prog_bar=True)
+        self.log(f"validation_loss", loss, on_epoch=True, prog_bar=True)
+        self.log(f"validation_acc", acc, on_epoch=True, prog_bar=True)
         return {"inputs":x, "targets":y, "predictions":predictions, "loss":loss} 
 
     def validation_epoch_end(self, outputs):

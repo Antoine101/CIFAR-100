@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # Parse command line arguments
     parser = ArgumentParser()
     parser.add_argument("--accelerator", default=None) # Supported inputs: "gpu", "cpu"
-    parser.add_argument("--devices", default=None) # Supported inputs: graphics card index (0, 1, ...)
+    parser.add_argument("--devices", default=None) # Supported inputs: number of graphics cards or cpu cores used (integer starting from 1)
     args = parser.parse_args()
 
     # Print accelerator
@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     # Print name of graphics card with index specified in arguments
     if args.accelerator=="gpu":
-        print(f"Graphics card(s) used: {torch.cuda.get_device_name(device=int(args.device))}")
+        print(f"Graphics card(s) used: {int(args.devices)}")
     elif args.accelerator=="cpu":
         print(f"Cores used: {args.devices}")
 
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     print(f"Number of workers used: {num_workers}")
 
     # Set maximum number of epochs to train for
-    max_epochs = 1
+    max_epochs = 200
     print(f"Maximum number of epochs: {max_epochs}")
 
     # Set the batch size
@@ -53,10 +53,10 @@ if __name__ == "__main__":
     tensorboard_logger = TensorBoardLogger(save_dir="logs")
 
     # Instantiate early stopping based on epoch validation loss
-    early_stopping = EarlyStopping("validation_loss", patience=20, verbose=True)
+    early_stopping = EarlyStopping("validation_loss", patience=40, verbose=True)
 
     # Instantiate a learning rate monitor
-    lr_monitor = LearningRateMonitor(logging_interval='step')
+    lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     # Instantiate a checkpoint callback
     checkpoint = ModelCheckpoint(
@@ -77,7 +77,7 @@ if __name__ == "__main__":
                     max_epochs=max_epochs, 
                     logger=tensorboard_logger,
                     log_every_n_steps = 1,
-                    callbacks=[lr_monitor, checkpoint]
+                    callbacks=[lr_monitor, early_stopping, checkpoint]
                     ) 
 
     # Instantiate the pipeline
