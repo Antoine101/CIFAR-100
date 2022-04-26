@@ -155,6 +155,7 @@ class CIFAR100ResNet(LightningModule):
         cm = self.confmat(predictions, targets)
         # Send it to the CPU
         cm = cm.cpu()
+        
         classes_precisions = []
         for class_id in range(self.n_classes):
             precision = cm[class_id, class_id] / torch.sum(cm[:,class_id])            
