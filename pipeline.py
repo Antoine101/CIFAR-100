@@ -166,7 +166,7 @@ class CIFAR100ResNet(LightningModule):
         with open("test_set_predictions.csv", "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(self.trainer.datamodule.classes)
-            for _, image_probs in enumerate(probabilities.numpy()):
+            for _, image_probs in enumerate(probabilities.cpu().numpy()):
                 writer.writerow(image_probs)
 
         # Write the test set prediction performances to a text file
