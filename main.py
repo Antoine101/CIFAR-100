@@ -1,8 +1,9 @@
 import os
+import multiprocessing
 from argparse import ArgumentParser
 import warnings
-import datamodule
-import pipeline
+import lightning_datamodule
+import lightning_module
 import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor, EarlyStopping
@@ -26,24 +27,31 @@ if __name__ == "__main__":
 
     # Print name of graphics card with index specified in arguments
     if args.accelerator == "gpu":
-        if not args.devices:
-            args.devices == "auto"
-            n_gpus = torch.cuda.device_count()
-            print(f"Using all {n_gpus} GPUs:")
+        n_gpus = torch.cuda.device_count()
+        if args.devices is None:
+            args.devices = "auto"
+            print(f"Using all GPUs available:")
             for i in range(n_gpus):
-                print(f" - {torch.get_device_name(device=i)}")
+                print(f" - {torch.cuda.get_device_name(device=i)}")
         elif args.devices == "auto":
-            n_gpus = torch.cuda.device_count()
             print(f"Using all {n_gpus} GPUs:")
             for i in range(n_gpus):
-                print(f" - {torch.get_device_name(device=i)}")
+                print(f" - {torch.cuda.get_device_name(device=i)}")
         else:
+            args.devices = int(args.devices)
+            if args.devices > n_gpus:
+                raise Exception(f"Requested number of GPUs is superior to available GPUs ({n_gpus}).")
             print(f"Using {args.devices} GPU(s):")
             for i in range(args.devices):
-                print(f" - {torch.get_device_name(device=i)}")
+                print(f" - {torch.cuda.get_device_name(device=i)}")
     elif args.accelerator=="cpu":
-        if not args.devices:
+        n_cpus = multiprocessing.cpu_count()
+        if args.devices is None:
             args.devices = 1
+        else:
+            args.devices = int(args.devices)
+            if args.devices > n_cpus:
+                raise Exception(f"Requested number of CPU cores is superior to available cores ({n_cpus}).")
         print(f"Cores used: {args.devices}")
 
     # Set number of workers (for dataloaders)
@@ -63,7 +71,7 @@ if __name__ == "__main__":
     print(f"Initial learning rate: {learning_rate}")    
 
     # Instantiate the datamodule
-    dm = datamodule.CIFAR100DataModule(batch_size=batch_size, num_workers=num_workers)
+    dm = lightning_datamodule.CIFAR100DataModule(batch_size=batch_size, num_workers=num_workers)
 
     # Instantiate the logger
     tensorboard_logger = TensorBoardLogger(save_dir="logs")
@@ -89,7 +97,7 @@ if __name__ == "__main__":
     # Instantiate the trainer
     trainer = Trainer(
                     accelerator=args.accelerator,
-                    devices=int(args.devices),
+                    devices=args.devices,
                     max_epochs=max_epochs, 
                     logger=tensorboard_logger,
                     log_every_n_steps = 1,
@@ -97,7 +105,7 @@ if __name__ == "__main__":
                     ) 
 
     # Instantiate the pipeline
-    pipeline = pipeline.CIFAR100ResNet(learning_rate=learning_rate, batch_size=batch_size)  
+    pipeline = lightning_module.CIFAR100ResNet(learning_rate=learning_rate, batch_size=batch_size)  
     
     # Fit the trainer on the training set
     trainer.fit(pipeline, dm)

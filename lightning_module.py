@@ -1,9 +1,6 @@
 import csv
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-import model
 import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import OneCycleLR, ReduceLROnPlateau, MultiStepLR
@@ -124,12 +121,6 @@ class CIFAR100ResNet(LightningModule):
         cm = self.confmat(predictions, targets)
         # Send it to the CPU
         cm = cm.cpu()
-        # For each class
-        for class_id in range(self.n_classes):
-                # Calculate and log its prediction precision on the full validation set
-                precision = cm[class_id, class_id] / torch.sum(cm[:,class_id])
-                precision = round(precision.item()*100,1)
-                self.log(f"validation_precision/{self.n_classes}", precision)
 
 
     def test_step(self, batch, batch_idx):
