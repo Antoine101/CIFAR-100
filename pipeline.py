@@ -167,7 +167,7 @@ class CIFAR100ResNet(LightningModule):
             writer = csv.writer(f)
             writer.writerow(self.trainer.datamodule.classes)
             for _, image_probs in enumerate(probabilities.cpu().numpy()):
-                writer.writerow(image_probs)
+                writer.writerow(np.around(image_probs, decimals=2))
 
         # Write the test set prediction performances to a text file
         with open("test_set_predictions.txt", "w") as f:
@@ -180,16 +180,13 @@ class CIFAR100ResNet(LightningModule):
             f.write("Per Class:\n")
             f.write("Class - Accuracy (%)\n")
             for class_id in range(self.n_classes):
-                precision = cm[class_id, class_id] / torch.sum(cm[:,class_id])            
-                precision = round(precision.item()*100, 1)
-                f.write(f"{self.trainer.datamodule.classes[class_id]} - {precision}\n")
+                f.write(f"{self.trainer.datamodule.classes[class_id]} - {classes_precisions[class_id]}\n")
             f.write("\n")
             f.write("\n")
             f.write("==================================================\n")
             f.write("PREDICTIONS DETAIL\n")
             f.write("==================================================\n")
             f.write("Image index - Target class - Predicted class\n")
-            # Write the target class and the predicted class for each test image
             for i in range(len(targets)):
                 f.write(f"{i} - {self.trainer.datamodule.classes[targets[i]]} - {self.trainer.datamodule.classes[predictions[i]]}\n")
         
