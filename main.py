@@ -25,9 +25,25 @@ if __name__ == "__main__":
     print(f"Accelerator: {args.accelerator}")
 
     # Print name of graphics card with index specified in arguments
-    if args.accelerator=="gpu":
-        print(f"Graphics card(s) used: {int(args.devices)}")
+    if args.accelerator == "gpu":
+        if not args.devices:
+            args.devices == "auto"
+            n_gpus = torch.cuda.device_count()
+            print(f"Using all {n_gpus} GPUs:")
+            for i in range(n_gpus):
+                print(f" - {torch.get_device_name(device=i)}")
+        elif args.devices == "auto":
+            n_gpus = torch.cuda.device_count()
+            print(f"Using all {n_gpus} GPUs:")
+            for i in range(n_gpus):
+                print(f" - {torch.get_device_name(device=i)}")
+        else:
+            print(f"Using {args.devices} GPU(s):")
+            for i in range(args.devices):
+                print(f" - {torch.get_device_name(device=i)}")
     elif args.accelerator=="cpu":
+        if not args.devices:
+            args.devices = 1
         print(f"Cores used: {args.devices}")
 
     # Set number of workers (for dataloaders)
@@ -35,7 +51,7 @@ if __name__ == "__main__":
     print(f"Number of workers used: {num_workers}")
 
     # Set maximum number of epochs to train for
-    max_epochs = 200
+    max_epochs = 10
     print(f"Maximum number of epochs: {max_epochs}")
 
     # Set the batch size

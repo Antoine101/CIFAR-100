@@ -14,27 +14,23 @@ from model import create_model
 from torchvision.utils import make_grid
  
 class CIFAR100ResNet(LightningModule):
+
     def __init__(self, learning_rate, batch_size):
         super().__init__()
-        
         # Save hyperparameters to the checkpoint
-        self.save_hyperparameters() 
-
-        # Instantiation of metrics
-        self.confmat = ConfusionMatrix(num_classes=100)
-        
+        self.save_hyperparameters()   
         # Creation of the model
         self.model = create_model()
-
+        # Instantiation of metrics
+        self.confmat = ConfusionMatrix(num_classes=100)    
         # Instantiation of the number of classes
         self.n_classes = 100 
-   
         # Instantiation of the learning rate
         self.learning_rate = learning_rate
-
         # Instantiation of the batch_size
         self.batch_size = batch_size
-        
+
+
     def configure_optimizers(self): 
         optimizer = torch.optim.SGD(
             self.parameters(),
@@ -42,7 +38,6 @@ class CIFAR100ResNet(LightningModule):
             momentum=0.9,
             weight_decay=5e-4,
         )
-
         #scheduler_dict = {
         #    "scheduler": MultiStepLR(
         #        optimizer,
@@ -51,7 +46,6 @@ class CIFAR100ResNet(LightningModule):
         #        ),
         #    "interval": "epoch"
         #}      
-
         scheduler_dict = {
             "scheduler": ReduceLROnPlateau(
                 optimizer,
@@ -63,7 +57,6 @@ class CIFAR100ResNet(LightningModule):
             "frequency": 1,
             "monitor": "validation_loss"
         }  
-
         #steps_per_epoch = int(np.ceil(45000 / self.batch_size))
         #scheduler_dict = {
             #"scheduler": OneCycleLR(
@@ -74,20 +67,22 @@ class CIFAR100ResNet(LightningModule):
             #),
             #"interval": "step"
         #}
-
         return {"optimizer": optimizer, "lr_scheduler": scheduler_dict}
-    
+
+   
     def forward(self, x):
-        out = self.model(x)
-        return F.log_softmax(out, dim=1)
+        logits = self.model(x)
+        return logits
+
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
-        logits = self(x)
-        loss = F.nll_loss(logits, y)
+        inputs, targets = batch
+        logits = self(inputs)
+        loss = F.cross_entropy(logits, targets)
         predictions = torch.argmax(logits, dim=1)
         self.log("train_loss", loss, on_epoch=True, prog_bar=True)
-        return {"inputs":x, "targets":y, "predictions":predictions, "loss":loss}    
+        return {"inputs":inputs, "targets":targets, "predictions":predictions, "loss":loss}    
+
 
     def training_epoch_end(self, outputs):
         # Log weights and biases for all layers of the model
@@ -108,23 +103,25 @@ class CIFAR100ResNet(LightningModule):
             input_sample = torch.permute(input_sample, (3,0,1,2))
             self.logger.experiment.add_graph(self, input_sample)
 
+
     def validation_step(self, batch, batch_idx):
-        x, y = batch
-        logits = self(x)
-        loss = F.nll_loss(logits, y)
+        inputs, targets = batch
+        logits = self(inputs)
+        loss = F.cross_entropy(logits, targets)
         predictions = torch.argmax(logits, dim=1)
-        acc = accuracy(predictions, y)
+        acc = accuracy(predictions, targets)
         self.log(f"validation_loss", loss, on_epoch=True, prog_bar=True)
         self.log(f"validation_acc", acc, on_epoch=True, prog_bar=True)
-        return {"inputs":x, "targets":y, "predictions":predictions, "loss":loss} 
+        return {"inputs":inputs, "targets":targets, "predictions":predictions, "loss":loss} 
+
 
     def validation_epoch_end(self, outputs):
         # Concatenate the targets of all batches
         targets = torch.cat([output["targets"] for output in outputs])
         # Concatenate the predictions of all batches
-        preds = torch.cat([output["predictions"] for output in outputs])
+        predictions = torch.cat([output["predictions"] for output in outputs])
         # Compute the confusion matrix
-        cm = self.confmat(preds, targets)
+        cm = self.confmat(predictions, targets)
         # Send it to the CPU
         cm = cm.cpu()
         # For each class
@@ -134,16 +131,18 @@ class CIFAR100ResNet(LightningModule):
                 precision = round(precision.item()*100,1)
                 self.log(f"validation_precision/{self.n_classes}", precision)
 
-    def test_step(self, batch):
-        x, y = batch
-        logits = self(x)
-        loss = F.nll_loss(logits, y)
+
+    def test_step(self, batch, batch_idx):
+        inputs, targets = batch
+        logits = self(inputs)
+        loss = F.cross_entropy(logits, targets)
         probabilities = F.softmax(logits, dim=1)
         predictions = torch.argmax(logits, dim=1)
-        acc = accuracy(predictions, y)
+        acc = accuracy(predictions, targets)
         self.log(f"test_loss", loss, prog_bar=True)
         self.log(f"test_acc", acc, prog_bar=True)
-        return {"targets":y, "predictions":predictions, "probabilities":probabilities}
+        return {"targets":targets, "predictions":predictions, "probabilities":probabilities}
+
 
     def test_epoch_end(self, outputs):
         targets = torch.cat([output["targets"] for output in outputs])
@@ -155,20 +154,18 @@ class CIFAR100ResNet(LightningModule):
         cm = self.confmat(predictions, targets)
         # Send it to the CPU
         cm = cm.cpu()
-        
+        # Calculate the accuracy for each class
         classes_precisions = []
         for class_id in range(self.n_classes):
             precision = cm[class_id, class_id] / torch.sum(cm[:,class_id])            
             precision = round(precision.item()*100, 1)
             classes_precisions.append(precision)
-
         # Write the test set prediction performances to an csv file
         with open("test_set_predictions.csv", "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(self.trainer.datamodule.classes)
             for _, image_probs in enumerate(probabilities.cpu().numpy()):
                 writer.writerow(np.around(image_probs, decimals=2))
-
         # Write the test set prediction performances to a text file
         with open("test_set_predictions.txt", "w") as f:
             f.write("==================================================\n")
@@ -190,6 +187,7 @@ class CIFAR100ResNet(LightningModule):
             for i in range(len(targets)):
                 f.write(f"{i} - {self.trainer.datamodule.classes[targets[i]]} - {self.trainer.datamodule.classes[predictions[i]]}\n")
         
+
     def on_save_checkpoint(self, checkpoint):
         # Get the state_dict from self.model to get rid of the "model." prefix
         checkpoint["state_dict"] = self.state_dict()
