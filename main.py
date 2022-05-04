@@ -18,8 +18,8 @@ if __name__ == "__main__":
 
     # Parse command line arguments
     parser = ArgumentParser()
-    parser.add_argument("--accelerator", default=None) # Supported inputs: "gpu", "cpu"
-    parser.add_argument("--devices", default=None) # Supported inputs: number of graphics cards or cpu cores used (integer starting from 1)
+    parser.add_argument("--accelerator", default="cpu") # Supported inputs: "gpu", "cpu"
+    parser.add_argument("--devices", default="1") # Supported inputs: number of graphics cards or cpu cores used (integer starting from 1)
     args = parser.parse_args()
 
     # Print accelerator
@@ -28,12 +28,7 @@ if __name__ == "__main__":
     # Print name of graphics card with index specified in arguments
     if args.accelerator == "gpu":
         n_gpus = torch.cuda.device_count()
-        if args.devices is None:
-            args.devices = "auto"
-            print(f"Using all GPUs available:")
-            for i in range(n_gpus):
-                print(f" - {torch.cuda.get_device_name(device=i)}")
-        elif args.devices == "auto":
+        if args.devices == "auto":
             print(f"Using all {n_gpus} GPUs:")
             for i in range(n_gpus):
                 print(f" - {torch.cuda.get_device_name(device=i)}")
@@ -46,8 +41,8 @@ if __name__ == "__main__":
                 print(f" - {torch.cuda.get_device_name(device=i)}")
     elif args.accelerator=="cpu":
         n_cpus = multiprocessing.cpu_count()
-        if args.devices is None:
-            args.devices = 1
+        if args.devices == "auto":
+            print(f"Using all {n_cpus} CPU cores.")
         else:
             args.devices = int(args.devices)
             if args.devices > n_cpus:
