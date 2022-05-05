@@ -19,7 +19,7 @@ class CIFAR100ResNet(LightningModule):
         # Creation of the model
         self.model = create_model() 
         # Instantiation of the validation set confusion matrix
-        self.validation_confmat = ConfusionMatrix(num_classes=100)
+        self.test_confmat = ConfusionMatrix(num_classes=100)
         # Instantiation of the number of classes
         self.n_classes = 100
 
@@ -94,7 +94,7 @@ class CIFAR100ResNet(LightningModule):
         loss = F.cross_entropy(logits, targets)
         probabilities = F.softmax(logits, dim=1)
         predictions = torch.argmax(logits, dim=1)
-        self.validation_confmat.update(predictions, targets)
+        self.test_confmat.update(predictions, targets)
         acc = accuracy(predictions, targets)
         self.log(f"test_loss", loss, prog_bar=True)
         self.log(f"test_acc", acc, prog_bar=True)
@@ -108,8 +108,9 @@ class CIFAR100ResNet(LightningModule):
         # Compute the total prediction accuracy on the full test set
         acc = accuracy(predictions, targets)
         # Compute the confusion matrix and send it back to the CPU if it was on the GPU
-        cm = self.validation_confmat.compute()
+        cm = self.test_confmat.compute()
         cm = cm.cpu()
+        self.test_confmat.reset()
         # Calculate the accuracy for each class
         classes_precisions = []
         for class_id in range(self.n_classes):

@@ -7,6 +7,7 @@ from pytorch_lightning import LightningDataModule
 from normstats import compute_normstats
 
 class CIFAR100DataModule(LightningDataModule):
+
     def __init__(self, batch_size=64, num_workers=2):
         super().__init__()
         self.save_hyperparameters()
@@ -19,10 +20,10 @@ class CIFAR100DataModule(LightningDataModule):
 
     def setup(self, stage = None):
 
-        train_set = datasets.CIFAR100(root="./data", train=True, transform=transforms.ToTensor())
-        train_set_mean, train_set_std = compute_normstats(train_set)
-
         if stage == "fit" or stage is None:
+            
+            train_set = datasets.CIFAR100(root="./data", train=True, transform=transforms.ToTensor())
+            train_set_mean, train_set_std = compute_normstats(train_set)
 
             train_set_transforms = transforms.Compose([transforms.RandomCrop(32, padding=4),
                                             transforms.RandomHorizontalFlip(p=0.5),
