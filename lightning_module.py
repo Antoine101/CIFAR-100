@@ -14,13 +14,9 @@ class CIFAR100ResNet(LightningModule):
 
     def __init__(self, learning_rate, batch_size):
         super().__init__()
-        # Save hyperparameters to the checkpoint
         self.save_hyperparameters()   
-        # Creation of the model
         self.model = create_model() 
-        # Instantiation of the validation set confusion matrix
         self.test_confmat = ConfusionMatrix(num_classes=100)
-        # Instantiation of the number of classes
         self.n_classes = 100
 
 

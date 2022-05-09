@@ -23,15 +23,15 @@ class CIFAR100DataModule(LightningDataModule):
         if stage == "fit" or stage is None:
             
             train_set = datasets.CIFAR100(root="./data", train=True, transform=transforms.ToTensor())
-            train_set_mean, train_set_std = compute_normstats(train_set)
+            self.train_set_mean, self.train_set_std = compute_normstats(train_set)
 
             train_set_transforms = transforms.Compose([transforms.RandomCrop(32, padding=4),
                                             transforms.RandomHorizontalFlip(p=0.5),
                                             transforms.RandomRotation(degrees=15),
                                             transforms.ToTensor(),
-                                            transforms.Normalize(train_set_mean, train_set_std, inplace=True)])
+                                            transforms.Normalize(self.train_set_mean, self.train_set_std, inplace=True)])
             validation_set_transforms = transforms.Compose([transforms.ToTensor(),
-                                            transforms.Normalize(train_set_mean, train_set_std, inplace=True)])                                            
+                                            transforms.Normalize(self.train_set_mean, self.train_set_std, inplace=True)])                                            
 
             # Get the train set images indices and shuffle them
             train_set_length = len(train_set)
@@ -58,7 +58,7 @@ class CIFAR100DataModule(LightningDataModule):
         if stage == "test" or stage is None:
 
             test_set_transforms = transforms.Compose([transforms.ToTensor(),
-                                            transforms.Normalize(train_set_mean, train_set_std, inplace=True)])
+                                            transforms.Normalize(self.train_set_mean, self.train_set_std, inplace=True)])
 
             self.cifar100_test = datasets.CIFAR100(root="./data", train=False, transform=test_set_transforms)
 
