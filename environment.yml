@@ -1,4 +1,0 @@
-name: CIFAR-100
-channels:
-  - defaults
-prefix: /Users/antoine/Dev/miniconda3/envs/CIFAR-100

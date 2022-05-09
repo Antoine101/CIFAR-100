@@ -47,6 +47,7 @@ def args_interpreter(args):
     print(f"Maximum number of epochs: {args.epochs}")
     print(f"Batch size: {args.bs}")
     print(f"Initial learning rate: {args.lr}")
+    print(f"Pretrained: {args.pretrained}")
 
     return args
 

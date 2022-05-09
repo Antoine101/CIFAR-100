@@ -2,20 +2,32 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchmetrics import ConfusionMatrix
 from torchmetrics.functional import accuracy
 from pytorch_lightning import LightningModule
-from model import create_model
+import torchvision
 from torchvision.utils import make_grid
  
 class CIFAR100ResNet(LightningModule):
 
-    def __init__(self, learning_rate, batch_size):
+    def __init__(self, learning_rate, batch_size, pretrained):
         super().__init__()
-        self.save_hyperparameters()   
-        self.model = create_model() 
+        self.save_hyperparameters()
+
+        if pretrained:
+            # Initialise a pretrained resnet18 model
+            model = torchvision.models.resnet18(pretrained=True) 
+            layers = list(model.children())[:-1]
+            self.feature_extractor = nn.Sequential(*layers)
+            self.classifier = nn.Linear(model.fc.in_features, 100)
+        else:
+            model = torchvision.models.resnet18(pretrained=False, num_classes=100) 
+            model.conv1 = nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+            model.maxpool = nn.Identity()
+
         self.test_confmat = ConfusionMatrix(num_classes=100)
         self.n_classes = 100
 
@@ -42,7 +54,13 @@ class CIFAR100ResNet(LightningModule):
 
    
     def forward(self, x):
-        logits = self.model(x)
+        if self.hparams.pretrained:
+            self.feature_extractor.eval()
+            with torch.no_grad():
+                representations = self.feature_extractor(x).flatten(1)
+            logits = self.classifier(representations)
+        else:
+            logits = self.model(x)
         return logits
 
 
